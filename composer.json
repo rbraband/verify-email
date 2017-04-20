@@ -1,0 +1,23 @@
+{
+    "name": "vitaliytv/verify-email",
+    "description": "Class to check up e-mail",
+    "type": "library",
+    "keywords": [
+        "verifyEmail"
+    ],
+    "authors": [
+        {
+            "name": "Konstantin Granin",
+            "email": "kostya@granin.me",
+            "role": "Developer"
+        }
+    ],    
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "verify-email": "."
+        }
+    }
+}
