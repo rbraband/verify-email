@@ -9,6 +9,9 @@
  */
 class verifyEmail {
 
+    /**
+     * Stream data
+     **/
     protected $stream = false;
 
     /**
@@ -147,6 +150,12 @@ class verifyEmail {
      * @type string
      */
     public $ErrorInfo = '';
+    
+    /**
+     * Holds the rating points for email address
+     * @type integer
+     */
+    public $Rating = 0;
 
     /**
      * Holds all messages.
@@ -161,7 +170,34 @@ class verifyEmail {
     public function __construct($exceptions = false) {
         $this->exceptions = (boolean) $exceptions;
     }
-
+    
+    /**
+     * perform
+     *
+     * @access public
+     *
+     * @param string  $email
+     *
+     * @return array result data
+     */
+    public function perform($email) {
+        // Result array 
+        $data = array(
+            "valid" => false
+        );
+        
+        if ($this->check($email)) 
+            $data["valid"] = true;
+        
+        $data["rating"] = round($this->Rating, 1);
+        $data["message"] = $this->ErrorInfo;
+        $data["completed"] = $this->Completed;
+        $data["checkResults"] = $this->MessageStack;
+        $data["email"] = $email;
+        
+        return $data;
+    }
+    
     /**
      * Set error language
      * @param string $lang
@@ -273,6 +309,7 @@ class verifyEmail {
                 return $mxhosts;
             }
         } else {
+            $this->Rating += 0.1;
             array_multisort($mxweights, $mxhosts);
         }
         /**
@@ -376,6 +413,9 @@ class verifyEmail {
         $result = FALSE;
         $response = NULL;
         $this->Completed = FALSE;
+        $this->ErrorInfo = '';
+        $this->MessageStack = array();
+        $this->Rating = 0;
 
         if (!self::validate($email)) {
             $this->set_error('incorrect_adress', $email);
@@ -386,6 +426,8 @@ class verifyEmail {
             return FALSE;
         }
         
+        $this->Rating += 0.1;
+        
         $this->set_error('correct_adress', $email);
         $this->edebug($this->ErrorInfo);
             
@@ -393,13 +435,9 @@ class verifyEmail {
         $this->stream = FALSE;
 
         $mxs = $this->getMXrecords(self::parse_email($email));
-        $timeout = ceil($this->max_connection_timeout / count($mxs));
             
         foreach ($mxs as $host) {
-            /**
-             * suppress error output from stream socket client...
-             * Thanks Michael.
-             */
+            $timeout = ceil($this->max_connection_timeout / count($mxs));
             $this->stream = @stream_socket_client("tcp://" . $host . ":" . $this->port, $errno, $errstr, $timeout);
             if ($this->stream === FALSE) {
                 if ($errno == 0) {
@@ -408,7 +446,7 @@ class verifyEmail {
                     if ($this->exceptions) {
                         throw new verifyEmailException($this->ErrorInfo);
                     }
-                    return FALSE;
+                    continue;
                 } else {
                     $this->edebug($host . ":" . $errstr);
                 }
@@ -418,10 +456,11 @@ class verifyEmail {
                 
                 $response = $this->_streamResponse();
                 $code = $this->_streamCode($response);
-
+                
                 /* 220 Ok */
                 if ($code == '220') {
                     $this->edebug("Connection success {$host}");
+                    $this->Rating += 0.1;
                     break;
                 } else {
                     fclose($this->stream);
@@ -447,6 +486,7 @@ class verifyEmail {
                 */
                 $this->set_error('not_checked', $code);
                 $this->edebug($this->ErrorInfo);
+                $this->Rating += 0.1;
                 return TRUE;
             } else {
                 $this->set_error('address_invalid', $code);
@@ -469,7 +509,9 @@ class verifyEmail {
             fclose($this->stream);
             return FALSE;
         }
-
+        
+        $this->Rating += 0.1;
+        
         if (!(
             $this->_streamQuery("HELO " . self::parse_email($this->from)) &&
             !!($response = $this->_streamResponse()) &&
@@ -480,6 +522,8 @@ class verifyEmail {
         )   return $this->_parseCode($response);
         
         $response = $this->_streamResponse();
+        
+        $this->Rating += 0.1;
         
         //$this->_streamResponse();
         $this->_streamQuery("RSET");
@@ -508,6 +552,7 @@ class verifyEmail {
                 $this->set_error('address_accepted', $code);
                 $this->edebug($this->ErrorInfo);
                 $this->Completed = TRUE;
+                $this->Rating += 0.1;
                 return TRUE;
             case '999':
             case '421':
@@ -539,6 +584,7 @@ class verifyEmail {
                  */
                 $this->set_error('not_checked', $code);
                 $this->edebug($this->ErrorInfo);
+                $this->Rating += 0.1;
                 return TRUE;
             case '550':
                 /**
@@ -550,6 +596,7 @@ class verifyEmail {
                  * 550 5.1.1 : User unknown
                  * 550 5.1.1 : Recipient address rejected: User unknown in virtual alias table
                  * 550 5.2.0 : mailbox unavailable
+                 * 550 5.4.1 : Recipient address rejected
                  * 550 5.5.0 : IP blacklisted
                  * 550 5.5.1 : Protocol error
                  *     does not want to accept your request for
@@ -562,6 +609,7 @@ class verifyEmail {
                 if (preg_match("/No PTR Record/i", $response) || preg_match("/Reverse lookup/i", $response) || preg_match("/Protocol error/i", $response) || preg_match("/Sender verification/i", $response) || preg_match("/Relay not permitted/i", $response)) {
                     $this->set_error('not_checked', $code);
                     $this->edebug($this->ErrorInfo);
+                    $this->Rating += 0.1;
                     return TRUE;
                 }
             default :
@@ -615,7 +663,10 @@ class verifyEmail {
             $timed_stream_timeout = $timed * $this->stream_timeout;
             $this->edebug("Timed out while waiting for data! (timeout {$timed_stream_timeout} seconds)");
         }
-
+        
+        if ($timed == 1)
+            $this->Rating += 0.1;
+                    
         $this->edebug($reply);
         return $reply;
     }
