@@ -61,7 +61,7 @@ class verifyEmail {
      * @type integer
      * @access protected
      */
-    protected $error_lang = 'de';
+    protected $error_lang = 'en';
     
     /**
      * The list of i18n errors.
@@ -71,7 +71,7 @@ class verifyEmail {
     protected $error_i18n = array(
         'invalid_adress' => array(
             'en' => 'Invalid address: %s',
-            'de' => 'Ungültige Adresse: %s'
+            'de' => 'Ungueltige Adresse: %s'
         ),
         'mx_not_found' => array(
             'en' => 'MX records not found or an error occurred',
@@ -107,11 +107,11 @@ class verifyEmail {
         ),
         'not_checked' => array(
             'en' => 'Warning (%s): Address not checked',
-            'de' => 'Warnung (%s): Adresse nicht geprüft'
+            'de' => 'Warnung (%s): Adresse nicht geprueft'
         ),
         'address_invalid' => array(
             'en' => 'Error (%s): Address invalid',
-            'de' => 'Fehler (%s): Adresse ungültig'
+            'de' => 'Fehler (%s): Adresse ungueltig'
         )
     );
 
@@ -160,6 +160,16 @@ class verifyEmail {
      */
     public function __construct($exceptions = false) {
         $this->exceptions = (boolean) $exceptions;
+    }
+
+    /**
+     * Set error language
+     * @param string $lang
+     */
+    public function setErrorLanguage($lang) {
+        if (in_array($lang, array('en', 'de'))) {
+            $this->error_lang = (string) $lang;
+        }
     }
 
     /**
@@ -480,7 +490,7 @@ class verifyEmail {
 
         return $this->_parseCode($response);
     }
-    
+
     protected function _parseCode($response) {
         $code = $this->_streamCode($response);
         
