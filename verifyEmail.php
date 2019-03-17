@@ -489,7 +489,6 @@ class verifyEmail {
             case '251':
             case '252':
                 /**
-                /**
                  * http://www.ietf.org/rfc/rfc0821.txt
                  * 250 Requested mail action okay, completed
                  * 251	User not local; will forward to <forward-path>
