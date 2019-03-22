@@ -273,7 +273,7 @@ class verifyEmail {
     public function isBlackListed($ip) {
         $result = array();
         $dnsbl_check = array("bl.spamcop.net",
-                             "list.dsbl.org",
+                                             
                              "sbl.spamhaus.org");
         
         if (filter_var($ip, FILTER_VALIDATE_IP) === FALSE)
@@ -282,14 +282,46 @@ class verifyEmail {
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
             $reverse_ip = implode(".", array_reverse(explode(".", $ip)));
             foreach ($dnsbl_check as $host) {
-                if (checkdnsrr($reverse_ip . "." . $host . ".", "A")) {
-                    $result[] = array($host, $reverse_ip . "." . $host);
+                $this->edebug("Test blacklist {$reverse_ip}.{$host}");
+                if (checkdnsrr("{$reverse_ip}.{$host}", "A")) {
+                    $result[] = array($host, "{$reverse_ip}.{$host}");
                 }
             }
             return ((empty($result)) ? FALSE : $result);
-       }
-       return FALSE;
+        }
+        return FALSE;
     }
+    
+    /**
+     * Use "dig" command to get DNS record data
+     * @param string $hostname The Internet host name.
+     * @param string $type The DNS record type.
+     *      ANY = Complete record
+     *      A   = Address Record
+     *      MX  = Mail Exchange Record
+     *      CNAME = Canonical Name Record  (http://en.wikipedia.org/wiki/Canonical_name_record)
+     *      
+     *      more types: http://en.wikipedia.org/wiki/List_of_DNS_record_types
+     *
+     * @return array Array of the DNS records found.
+     */
+    public static function digDnsRecord($hostname, $type = 'A') { 
+        static $__dig = null;
+        
+        if (is_null($__dig)) {
+            $dig_path = trim(shell_exec('sudo which dig'));
+            $__dig = (is_null($dig_path) /* || !file_exists($dig_path) */) ? false : true;
+        }
+        
+        if (!$__dig || empty($hostname)) {
+            return null;
+        }
+        
+        $cleaned_host = escapeshellcmd($hostname);
+        
+        $lookup = shell_exec("dig $type $cleaned_host"); 
+        return $lookup;
+    }  
 
     /**
      * Get array of MX records for host. Sort by weight information.
@@ -437,6 +469,7 @@ class verifyEmail {
         $mxs = $this->getMXrecords(self::parse_email($email));
             
         foreach ($mxs as $host) {
+            $this->edebug("Try mx {$host}");
             $timeout = ceil($this->max_connection_timeout / count($mxs));
             $this->stream = @stream_socket_client("tcp://" . $host . ":" . $this->port, $errno, $errstr, $timeout);
             if ($this->stream === FALSE) {
@@ -649,7 +682,7 @@ class verifyEmail {
         
         $_suffix = '';
         do {
-            $buffer = stream_get_line($this->stream, 1024, self::CRLF);
+            $buffer = stream_get_line($this->stream, 512, self::CRLF);
             $reply .= $buffer . $_suffix;
             $_suffix = "\n";
             $status = stream_get_meta_data($this->stream);
