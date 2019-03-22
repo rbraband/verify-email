@@ -1,5 +1,5 @@
 {
-    "name": "vitaliytv/verify-email",
+    "name": "rbraband/verify-email",
     "description": "Class to check up e-mail",
     "type": "library",
     "keywords": [
@@ -7,8 +7,8 @@
     ],
     "authors": [
         {
-            "name": "Konstantin Granin",
-            "email": "kostya@granin.me",
+            "name": "Roland Braband",
+            "email": "r.braband@web.de",
             "role": "Developer"
         }
     ],    
